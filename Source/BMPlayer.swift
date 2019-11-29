@@ -74,7 +74,7 @@ open class BMPlayer: UIView {
     
     fileprivate var isFullScreen:Bool {
         get {
-            return UIApplication.shared.statusBarOrientation.isLandscape
+            return isFullScreenStatus()
         }
     }
     
@@ -274,12 +274,12 @@ open class BMPlayer: UIView {
                 isSliderSliding = false
                 if isPlayToTheEnd {
                     isPlayToTheEnd = false
-                    seek(self.sumTime, completion: {[weak self] in
-                        self?.play()
+                    seek(self.sumTime, completion: {
+                        self.play()
                     })
                 } else {
-                    seek(self.sumTime, completion: {[weak self] in
-                        self?.autoPlay()
+                    seek(self.sumTime, completion: {
+                        self.autoPlay()
                     })
                 }
                 // 把sumTime滞空，不然会越加越多
@@ -332,12 +332,28 @@ open class BMPlayer: UIView {
         controlView.updateUI(!self.isFullScreen)
         if isFullScreen {
             UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+            if #available(iOS 13, *) { return }
+            
             UIApplication.shared.setStatusBarHidden(false, with: .fade)
             UIApplication.shared.statusBarOrientation = .portrait
         } else {
             UIDevice.current.setValue(UIInterfaceOrientation.landscapeRight.rawValue, forKey: "orientation")
+            if #available(iOS 13, *) { return }
+            
             UIApplication.shared.setStatusBarHidden(false, with: .fade)
             UIApplication.shared.statusBarOrientation = .landscapeRight
+        }
+    }
+    
+    fileprivate func isFullScreenStatus() -> Bool{
+        if #available(iOS 13, *) {
+            guard let orientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation else {
+               assert(false, "Could not obtain UIInterfaceOrientation from a valid windowScene")
+                return false
+            }
+            return (orientation == .landscapeLeft || orientation == .landscapeRight)
+        } else {
+            return UIApplication.shared.statusBarOrientation.isLandscape
         }
     }
     
@@ -417,9 +433,8 @@ open class BMPlayer: UIView {
         playerLayer = BMPlayerLayerView()
         playerLayer!.videoGravity = videoGravity
         insertSubview(playerLayer!, at: 0)
-        playerLayer!.snp.makeConstraints { [weak self](make) in
-          guard let `self` = self else { return }
-          make.edges.equalTo(self)
+        playerLayer!.snp.makeConstraints { (make) in
+            make.edges.equalTo(self)
         }
         playerLayer!.delegate = self
         controlView.showLoader()
@@ -452,13 +467,12 @@ extension BMPlayer: BMPlayerLayerViewDelegate {
                 play()
             }
             if shouldSeekTo != 0 {
-                seek(shouldSeekTo, completion: {[weak self] in
-                  guard let `self` = self else { return }
-                  if !self.isPauseByUser {
-                      self.play()
-                  } else {
-                      self.pause()
-                  }
+                seek(shouldSeekTo, completion: {
+                    if !self.isPauseByUser {
+                        self.play()
+                    } else {
+                        self.pause()
+                    }
                 })
             }
             
@@ -483,6 +497,7 @@ extension BMPlayer: BMPlayerLayerViewDelegate {
         if isSliderSliding {
             return
         }
+        
         controlView.playTimeDidChange(currentTime: currentTime, totalTime: totalTime)
         controlView.totalDuration = totalDuration
         playTimeDidChange?(currentTime, totalTime)
@@ -515,8 +530,8 @@ extension BMPlayer: BMPlayerControlViewDelegate {
                     pause()
                 } else {
                     if isPlayToTheEnd {
-                        seek(0, completion: {[weak self] in
-                          self?.play()
+                        seek(0, completion: {
+                            self.play()
                         })
                         controlView.hidePlayToTheEndView()
                         isPlayToTheEnd = false
@@ -552,13 +567,13 @@ extension BMPlayer: BMPlayerControlViewDelegate {
             
             if isPlayToTheEnd {
                 isPlayToTheEnd = false
-                seek(target, completion: {[weak self] in
-                  self?.play()
+                seek(target, completion: {
+                    self.play()
                 })
                 controlView.hidePlayToTheEndView()
             } else {
-                seek(target, completion: {[weak self] in
-                  self?.autoPlay()
+                seek(target, completion: {
+                    self.autoPlay()
                 })
             }
         default:
